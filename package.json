@@ -9,7 +9,8 @@
     "lint": "eslint",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "tsx prisma/seed.ts"
+    "db:seed": "tsx prisma/seed.ts",
+    "db:seed:prod": "npx prisma db seed"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
@@ -19,7 +20,8 @@
     "react": "19.2.8",
     "react-dom": "19.2.8",
     "@prisma/client": "^6.1.0",
-    "recharts": "^2.15.0"
+    "recharts": "^2.15.0",
+    "tsx": "^4.19.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
@@ -30,7 +32,6 @@
     "eslint-config-next": "16.3.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "prisma": "^6.1.0",
-    "tsx": "^4.19.0"
+    "prisma": "^6.1.0"
   }
 }
