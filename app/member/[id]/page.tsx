@@ -81,7 +81,11 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
           </div>
         )}
 
-        <ProgressForm memberId={member.id} items={rows} />
+        {/* Keyed on role/band so the form remounts (and drops stale client
+            state) right after an admin reassigns this person's role/band —
+            otherwise the checklist below would keep showing the old items
+            until a manual hard refresh. */}
+        <ProgressForm key={`${member.role}-${member.band}`} memberId={member.id} items={rows} />
       </div>
     </div>
   );
