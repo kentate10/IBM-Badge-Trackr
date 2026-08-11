@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  PM
+  BA
+}
+
+enum Band {
+  FOUNDATION
+  EXPERIENCED
+  EXPERT
+}
+
+enum Status {
+  MET
+  NOT_MET
+  IN_PROGRESS
+  BLOCKED
+}
+
+enum Tracker {
+  SKILLS
+  GENERAL
+}
+
+model Member {
+  id          String     @id @default(cuid())
+  name        String
+  email       String     @unique
+  role        Role
+  band        Band
+  slackHandle String?
+  yearsAtIbm  Float?
+  isManager   Boolean    @default(false)
+  notes       String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  progress    Progress[]
+  snapshots   Snapshot[]
+}
+
+// Defines every field that can appear in either tracker (Skills Tracker Week 0
+// or General Tracker Week 0), scoped to the role/band it applies to. role/band
+// null means "applies to everyone" (used for General Tracker items).
+model SkillItem {
+  id           String     @id @default(cuid())
+  key          String     @unique
+  label        String
+  section      String
+  tracker      Tracker
+  role         Role?
+  band         Band?
+  hasPercent   Boolean    @default(true)
+  optional     Boolean    @default(false)
+  helpText     String?
+  displayOrder Int        @default(0)
+  progress     Progress[]
+}
+
+// The current value of one member x one skill item. Updated in place as
+// people mark progress; history is captured separately via Snapshot.
+model Progress {
+  id          String    @id @default(cuid())
+  memberId    String
+  skillItemId String
+  status      Status    @default(NOT_MET)
+  percent     Int       @default(0)
+  notes       String?
+  updatedAt   DateTime  @updatedAt
+  member      Member    @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  skillItem   SkillItem @relation(fields: [skillItemId], references: [id], onDelete: Cascade)
+
+  @@unique([memberId, skillItemId])
+  @@index([memberId])
+}
+
+// A point-in-time rollup per member, created whenever an admin clicks "Save
+// quincenal snapshot". Powers the progress-over-time trend chart.
+model Snapshot {
+  id              String   @id @default(cuid())
+  memberId        String
+  label           String
+  takenAt         DateTime @default(now())
+  metCount        Int
+  totalCount      Int
+  percentComplete Float
+  member          Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([takenAt])
+  @@index([memberId])
+}
+
+model LinkResource {
+  id           String  @id @default(cuid())
+  title        String
+  url          String
+  category     String
+  description  String?
+  displayOrder Int     @default(0)
+}
