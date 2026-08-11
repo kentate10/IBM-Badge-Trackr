@@ -5,6 +5,7 @@ import { prisma } from "@/lib/db";
 import { roleBandLabel } from "@/lib/labels";
 import Nav from "@/components/Nav";
 import ProgressForm, { type ItemRow } from "@/components/ProgressForm";
+import MemberRoleEditor from "@/components/MemberRoleEditor";
 
 export default async function MemberPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -62,6 +63,9 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
               {roleBandLabel(member.role, member.band)}
               {member.yearsAtIbm != null && ` · ${member.yearsAtIbm} años en IBM`}
             </p>
+            {session.role === "admin" && (
+              <MemberRoleEditor memberId={member.id} initialRole={member.role} initialBand={member.band} />
+            )}
           </div>
           <div className="text-right">
             <p className="text-2xl font-semibold text-slate-900">{pct}%</p>
