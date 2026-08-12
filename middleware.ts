@@ -7,10 +7,14 @@ import { SESSION_COOKIE_NAME } from "@/lib/auth";
 // layout/page via getSession(). This just keeps logged-out visitors from
 // ever rendering a protected page's shell.
 const PUBLIC_PATHS = ["/login"];
-// NOTE: /api/debug is a TEMPORARY exemption for a one-off read-only
-// diagnostic route (app/api/debug/verify-update). Remove this prefix and
-// the route together once the 2026-08-12 data verification is confirmed.
-const PUBLIC_PREFIXES = ["/api/auth", "/api/debug"];
+const PUBLIC_PREFIXES = ["/api/auth"];
+// The one-off /api/debug/* routes (verify-update, run-update) used on
+// 2026-08-12 to fix the failed preDeployCommand data migration are back
+// behind the normal session gate now that they're no longer needed — no
+// exemption for them here. The route files themselves are left in the repo
+// (harmless, inert without a session) rather than deleted, since a sandbox
+// filesystem-permission quirk blocked removing them; delete them by hand
+// next time app/api/debug is touched, if you want a fully clean tree.
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
