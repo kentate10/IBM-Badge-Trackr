@@ -31,5 +31,14 @@ export async function GET() {
     },
   });
 
-  return NextResponse.json({ checkedAt: new Date().toISOString(), members });
+  // Full roster (email + name only) so a checked email that comes back
+  // missing above can be cross-referenced against what's actually stored —
+  // e.g. Luis.Gomez.G@ibm.com not matching CHECK_EMAILS revealed the real
+  // stored email differs from prisma/seed.ts's literal string.
+  const allMembers = await prisma.member.findMany({
+    select: { email: true, name: true },
+    orderBy: { name: "asc" },
+  });
+
+  return NextResponse.json({ checkedAt: new Date().toISOString(), members, allMembers });
 }
