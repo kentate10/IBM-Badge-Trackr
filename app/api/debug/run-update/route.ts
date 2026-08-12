@@ -40,12 +40,29 @@ const yearsUpdates = [
   { email: "jarobles@cr.ibm.com", years: 11 },
 ];
 
+// Luis.Gomez.G@ibm.com fails an exact findUnique match despite looking
+// identical in JSON output (allMembers listed it verbatim) — almost
+// certainly a hidden character (stray whitespace / non-breaking space)
+// from however the row was originally seeded. Fall back to a name-based
+// lookup, which sidesteps whatever is wrong with the stored email string.
+const NAME_FALLBACK: Record<string, string> = {
+  "Luis.Gomez.G@ibm.com": "Luis Martin Gomez Gonzalez",
+};
+
+async function findMember(email: string) {
+  const byEmail = await prisma.member.findUnique({ where: { email } });
+  if (byEmail) return byEmail;
+  const fallbackName = NAME_FALLBACK[email];
+  if (!fallbackName) return null;
+  return prisma.member.findFirst({ where: { name: fallbackName } });
+}
+
 export async function GET() {
   const results: string[] = [];
   const skipped: string[] = [];
 
   for (const u of updates) {
-    const member = await prisma.member.findUnique({ where: { email: u.email } });
+    const member = await findMember(u.email);
     if (!member) {
       skipped.push(`no member: ${u.email}`);
       continue;
@@ -69,12 +86,12 @@ export async function GET() {
   }
 
   for (const y of yearsUpdates) {
-    const member = await prisma.member.findUnique({ where: { email: y.email } });
+    const member = await findMember(y.email);
     if (!member) {
       skipped.push(`no member for years: ${y.email}`);
       continue;
     }
-    await prisma.member.update({ where: { email: y.email }, data: { yearsAtIbm: y.years } });
+    await prisma.member.update({ where: { id: member.id }, data: { yearsAtIbm: y.years } });
     results.push(`years ${y.email} -> ${y.years}`);
   }
 
