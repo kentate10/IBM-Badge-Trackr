@@ -7,7 +7,10 @@ import { SESSION_COOKIE_NAME } from "@/lib/auth";
 // layout/page via getSession(). This just keeps logged-out visitors from
 // ever rendering a protected page's shell.
 const PUBLIC_PATHS = ["/login"];
-const PUBLIC_PREFIXES = ["/api/auth"];
+// NOTE: /api/debug is a TEMPORARY exemption for a one-off read-only
+// diagnostic route (app/api/debug/verify-update). Remove this prefix and
+// the route together once the 2026-08-12 data verification is confirmed.
+const PUBLIC_PREFIXES = ["/api/auth", "/api/debug"];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
