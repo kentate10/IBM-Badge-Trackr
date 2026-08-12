@@ -3,30 +3,45 @@ import { prisma } from "@/lib/db";
 import type { Status } from "@prisma/client";
 import StatusDonut from "@/components/charts/StatusDonut";
 import MemberBarChart from "@/components/charts/MemberBarChart";
-import SectionBarChart from "@/components/charts/SectionBarChart";
+import SectionBarChart, { type SectionBarDatum } from "@/components/charts/SectionBarChart";
 import TrendLineChart from "@/components/charts/TrendLineChart";
 import SnapshotButton from "./SnapshotButton";
+import WeekSelector from "./WeekSelector";
+import ExportButtons from "./ExportButtons";
+import { buildRecommendations, type Recommendation } from "@/lib/recommendations";
 
 export const dynamic = "force-dynamic";
 
-export default async function AdminDashboard() {
-  const [members, items, allProgress, snapshots] = await Promise.all([
+type MemberRow = { id: string; name: string; pct: number; met: number; total: number };
+
+export default async function AdminDashboard({
+  searchParams,
+}: {
+  searchParams: Promise<{ week?: string }>;
+}) {
+  const { week } = await searchParams;
+
+  const [members, items, allProgress, snapshots, weeklySnapshots] = await Promise.all([
     prisma.member.findMany({ orderBy: { name: "asc" } }),
     prisma.skillItem.findMany(),
     prisma.progress.findMany(),
     prisma.snapshot.findMany({ orderBy: { takenAt: "asc" } }),
+    prisma.weeklySnapshot.findMany({ orderBy: { takenAt: "desc" }, select: { label: true, teamPercent: true } }),
   ]);
 
-  const itemById = new Map(items.map((i) => [i.id, i]));
+  const selectedWeek = week && weeklySnapshots.some((w) => w.label === week) ? week : null;
+
+  // --- Live aggregation. Always computed: it powers the trend chart no
+  // matter what's selected, and is the default view when no week is picked. ---
   const progressByMember = new Map<string, typeof allProgress>();
   for (const p of allProgress) {
     if (!progressByMember.has(p.memberId)) progressByMember.set(p.memberId, []);
     progressByMember.get(p.memberId)!.push(p);
   }
 
-  const statusCounts: Record<Status, number> = { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0 };
-  const sectionCounts = new Map<string, Record<Status, number>>();
-  const memberPct: { id: string; name: string; pct: number; met: number; total: number }[] = [];
+  const liveStatusCounts: Record<Status, number> = { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0 };
+  const liveSectionCounts = new Map<string, Record<Status, number>>();
+  const liveMemberPct: MemberRow[] = [];
 
   for (const member of members) {
     const applicable = items.filter(
@@ -38,16 +53,16 @@ export default async function AdminDashboard() {
     let met = 0;
     for (const item of applicable) {
       const status: Status = progByItemId.get(item.id)?.status ?? "NOT_MET";
-      statusCounts[status] += 1;
+      liveStatusCounts[status] += 1;
       if (status === "MET") met += 1;
 
-      if (!sectionCounts.has(item.section)) {
-        sectionCounts.set(item.section, { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0 });
+      if (!liveSectionCounts.has(item.section)) {
+        liveSectionCounts.set(item.section, { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0 });
       }
-      sectionCounts.get(item.section)![status] += 1;
+      liveSectionCounts.get(item.section)![status] += 1;
     }
 
-    memberPct.push({
+    liveMemberPct.push({
       id: member.id,
       name: member.name,
       pct: applicable.length ? Math.round((met / applicable.length) * 100) : 0,
@@ -55,15 +70,12 @@ export default async function AdminDashboard() {
       total: applicable.length,
     });
   }
+  liveMemberPct.sort((a, b) => b.pct - a.pct);
 
-  memberPct.sort((a, b) => b.pct - a.pct);
+  const liveTeamTotal = Object.values(liveStatusCounts).reduce((a, b) => a + b, 0);
+  const liveTeamPct = liveTeamTotal ? Math.round((liveStatusCounts.MET / liveTeamTotal) * 100) : 0;
 
-  const teamTotal = Object.values(statusCounts).reduce((a, b) => a + b, 0);
-  const teamPct = teamTotal ? Math.round((statusCounts.MET / teamTotal) * 100) : 0;
-  const at100 = memberPct.filter((m) => m.pct === 100).length;
-  const below50 = memberPct.filter((m) => m.pct < 50).length;
-
-  const sectionData = [...sectionCounts.entries()]
+  const liveSectionData: SectionBarDatum[] = [...liveSectionCounts.entries()]
     .map(([name, counts]) => ({
       name,
       met: counts.MET,
@@ -71,7 +83,6 @@ export default async function AdminDashboard() {
       blocked: counts.BLOCKED,
       notMet: counts.NOT_MET,
     }))
-    // Keep table order roughly matching the original workbook sections.
     .sort((a, b) => a.name.localeCompare(b.name));
 
   // Trend: average % complete per snapshot label, split by role, plus team overall.
@@ -95,6 +106,42 @@ export default async function AdminDashboard() {
     return { label, Equipo: avg(b.all), PM: avg(b.pm), BA: avg(b.ba) };
   });
 
+  // --- Selected view: live numbers above, or a saved week's frozen
+  // breakdown, so the whole dashboard (not just the trend line) shows
+  // exactly how things looked that week. ---
+  let statusCounts = liveStatusCounts;
+  let sectionData = liveSectionData;
+  let memberPct = liveMemberPct;
+  let teamPct = liveTeamPct;
+  let viewedLabel = "En vivo (ahora)";
+
+  if (selectedWeek) {
+    const weekly = await prisma.weeklySnapshot.findUnique({
+      where: { label: selectedWeek },
+      include: { memberSnapshots: { include: { member: true } } },
+    });
+    if (weekly) {
+      statusCounts = weekly.statusBreakdown as unknown as Record<Status, number>;
+      sectionData = weekly.sectionBreakdown as unknown as SectionBarDatum[];
+      teamPct = Math.round(weekly.teamPercent);
+      memberPct = weekly.memberSnapshots
+        .map((s) => ({
+          id: s.memberId,
+          name: s.member.name,
+          pct: Math.round(s.percentComplete),
+          met: s.metCount,
+          total: s.totalCount,
+        }))
+        .sort((a, b) => b.pct - a.pct);
+      viewedLabel = weekly.label;
+    }
+  }
+
+  const at100 = memberPct.filter((m) => m.pct === 100).length;
+  const below50 = memberPct.filter((m) => m.pct < 50).length;
+
+  const recommendations = buildRecommendations({ memberPct, sectionData, statusCounts, teamPct, trend: trendData });
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -102,15 +149,40 @@ export default async function AdminDashboard() {
           <h1 className="text-xl font-semibold text-slate-900">Panel general</h1>
           <p className="text-sm text-slate-500">Avance del equipo en Badge Acceleration — 2026 Core Skills Expectations</p>
         </div>
-        <SnapshotButton />
+        <div className="flex flex-wrap items-center gap-3">
+          <WeekSelector weeks={weeklySnapshots} current={selectedWeek} />
+          <ExportButtons />
+          <SnapshotButton />
+        </div>
       </div>
+
+      <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
+        <strong className="font-semibold text-slate-700">¿Qué es un snapshot?</strong> Es una foto fija del avance de todo
+        el equipo — el status de cada campo, cada persona y el % general — tomada en un momento dado. Se guarda con
+        &ldquo;Guardar snapshot semanal&rdquo; (lo ideal es una vez por semana) y, una vez guardada, ya no cambia aunque el
+        equipo siga actualizando su checklist después. Sirve para dos cosas: la tendencia del gráfico de más abajo, y el
+        filtro &ldquo;Semana&rdquo; de arriba, que te deja ver el panel completo exactamente como se veía esa semana.
+      </div>
+
+      {selectedWeek && (
+        <div className="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-800">
+          Estás viendo el snapshot de <strong>{viewedLabel}</strong>, no los datos actuales.{" "}
+          <Link href="/admin" className="font-medium underline">
+            Volver a en vivo
+          </Link>
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <StatCard label="Avance del equipo" value={`${teamPct}%`} />
-        <StatCard label="Personas al 100%" value={`${at100} / ${members.length}`} />
+        <StatCard label="Personas al 100%" value={`${at100} / ${memberPct.length}`} />
         <StatCard label="Por debajo de 50%" value={String(below50)} tone={below50 > 0 ? "warn" : "default"} />
-        <StatCard label="Snapshots guardados" value={String(labelOrder.length)} />
+        <StatCard label="Snapshots guardados" value={String(weeklySnapshots.length)} />
       </div>
+
+      <ChartCard title="Recomendaciones">
+        <RecommendationsList items={recommendations} />
+      </ChartCard>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <ChartCard title="Distribución general de estados">
@@ -125,18 +197,18 @@ export default async function AdminDashboard() {
         <SectionBarChart data={sectionData} />
       </ChartCard>
 
-      <ChartCard title="Avance en el tiempo (quincenal)">
+      <ChartCard title="Avance en el tiempo (semanal)">
         {trendData.length === 0 ? (
           <p className="py-8 text-center text-sm text-slate-400">
-            Aún no hay snapshots guardados. Usá el botón &ldquo;Guardar snapshot quincenal&rdquo; arriba cada dos semanas para
-            empezar a ver la tendencia acá.
+            Aún no hay snapshots guardados. Usá el botón &ldquo;Guardar snapshot semanal&rdquo; arriba para empezar a ver la
+            tendencia acá.
           </p>
         ) : (
           <TrendLineChart data={trendData} series={["Equipo", "PM", "BA"]} />
         )}
       </ChartCard>
 
-      <ChartCard title="Equipo">
+      <ChartCard title={selectedWeek ? `Equipo — ${viewedLabel}` : "Equipo"}>
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead>
@@ -150,9 +222,13 @@ export default async function AdminDashboard() {
               {memberPct.map((m) => (
                 <tr key={m.id}>
                   <td className="py-2.5 pr-4">
-                    <Link href={`/member/${m.id}`} className="font-medium text-blue-600 hover:underline">
-                      {m.name}
-                    </Link>
+                    {selectedWeek ? (
+                      <span className="font-medium text-slate-700">{m.name}</span>
+                    ) : (
+                      <Link href={`/member/${m.id}`} className="font-medium text-blue-600 hover:underline">
+                        {m.name}
+                      </Link>
+                    )}
                   </td>
                   <td className="py-2.5 pr-4">
                     <div className="flex items-center gap-2">
@@ -193,5 +269,32 @@ function ChartCard({ title, children }: { title: string; children: React.ReactNo
       <h3 className="mb-3 text-sm font-semibold text-slate-700">{title}</h3>
       {children}
     </div>
+  );
+}
+
+function RecommendationsList({ items }: { items: Recommendation[] }) {
+  const cardStyle: Record<Recommendation["severity"], string> = {
+    high: "border-rose-200 bg-rose-50",
+    medium: "border-amber-200 bg-amber-50",
+    info: "border-slate-200 bg-slate-50",
+  };
+  const dotStyle: Record<Recommendation["severity"], string> = {
+    high: "bg-rose-500",
+    medium: "bg-amber-500",
+    info: "bg-slate-400",
+  };
+
+  return (
+    <ul className="space-y-2">
+      {items.map((r, i) => (
+        <li key={i} className={`flex gap-3 rounded-lg border px-3 py-2.5 ${cardStyle[r.severity]}`}>
+          <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${dotStyle[r.severity]}`} />
+          <div>
+            <p className="text-sm font-medium text-slate-800">{r.title}</p>
+            <p className="text-sm text-slate-600">{r.detail}</p>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }

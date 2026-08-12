@@ -81,20 +81,40 @@ model Progress {
   @@index([memberId])
 }
 
-// A point-in-time rollup per member, created whenever an admin clicks "Save
-// quincenal snapshot". Powers the progress-over-time trend chart.
+// A point-in-time rollup per member, created whenever an admin saves a
+// weekly snapshot. Powers the progress-over-time trend chart.
 model Snapshot {
-  id              String   @id @default(cuid())
-  memberId        String
-  label           String
-  takenAt         DateTime @default(now())
-  metCount        Int
-  totalCount      Int
-  percentComplete Float
-  member          Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  id               String          @id @default(cuid())
+  memberId         String
+  label            String
+  takenAt          DateTime        @default(now())
+  metCount         Int
+  totalCount       Int
+  percentComplete  Float
+  member           Member          @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  weeklySnapshot    WeeklySnapshot? @relation(fields: [weeklySnapshotId], references: [id], onDelete: SetNull)
+  weeklySnapshotId String?
 
   @@index([takenAt])
   @@index([memberId])
+}
+
+// One row per "week saved" (admin clicks "Guardar snapshot semanal"). Holds
+// the team-wide breakdown so the admin panel can be filtered to show the
+// dashboard exactly as it looked for that week, not just the trend line.
+// The per-member Snapshot rows above are linked to this via weeklySnapshotId.
+model WeeklySnapshot {
+  id               String     @id @default(cuid())
+  label            String     @unique
+  takenAt          DateTime   @default(now())
+  teamPercent      Float
+  // { MET, NOT_MET, IN_PROGRESS, BLOCKED } counts across the whole team
+  statusBreakdown  Json
+  // [{ name, met, inProgress, blocked, notMet }] per tracker section
+  sectionBreakdown Json
+  memberSnapshots  Snapshot[]
+
+  @@index([takenAt])
 }
 
 model LinkResource {
