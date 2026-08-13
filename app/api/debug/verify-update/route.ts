@@ -8,7 +8,14 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 const CHECK_EMAILS = [
-  "cehernan@cr.ibm.com",
+  // 2026-08-12 + 2026-08-13 batches being applied this run
+  "alara@cr.ibm.com",
+  "David.Villalobos@ibm.com",
+  "dquesada@ibm.com",
+  "Rodrigo.Chavarria@ibm.com",
+  "rlobo@ibm.com",
+  "mcarvaja@cr.ibm.com",
+  // earlier 2026-08-12 batch, included to reconfirm it's still live
   "tpereira@cr.ibm.com",
   "Luis.Gomez.G@ibm.com",
   "jarobles@cr.ibm.com",
