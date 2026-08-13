@@ -12,6 +12,14 @@ export type ItemMemberRow = {
   percent: number;
 };
 
+type SortMode = "status" | "name";
+
+// Reuses the canonical Met → In Progress → Blocked → Not Met order from
+// lib/labels so the table and the status dropdowns never disagree.
+const STATUS_RANK: Record<Status, number> = Object.fromEntries(
+  STATUS_ORDER.map((s, i) => [s, i])
+) as Record<Status, number>;
+
 export default function ItemProgressTable({
   skillItemId,
   hasPercent,
@@ -25,11 +33,25 @@ export default function ItemProgressTable({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>("status");
 
   const dirty = useMemo(
     () => rows.some((r, i) => r.status !== initialRows[i].status || r.percent !== initialRows[i].percent),
     [rows, initialRows]
   );
+
+  // Display-only ordering: sorts a copy for rendering, but `rows` itself
+  // keeps its original order so the index-based dirty/save checks above (and
+  // inside save()) stay correct no matter how the table is sorted on screen.
+  const sortedRows = useMemo(() => {
+    const copy = [...rows];
+    copy.sort((a, b) =>
+      sortMode === "status"
+        ? STATUS_RANK[a.status] - STATUS_RANK[b.status] || a.name.localeCompare(b.name)
+        : a.name.localeCompare(b.name)
+    );
+    return copy;
+  }, [rows, sortMode]);
 
   function updateRow(memberId: string, patch: Partial<ItemMemberRow>) {
     setRows((prev) =>
@@ -83,6 +105,35 @@ export default function ItemProgressTable({
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <span className="text-xs font-medium text-slate-500">Ordenar por</span>
+          <div className="inline-flex rounded-lg border border-slate-300 bg-white p-0.5 shadow-sm">
+            <button
+              type="button"
+              onClick={() => setSortMode("status")}
+              aria-pressed={sortMode === "status"}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                sortMode === "status" ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              Estado (Met primero)
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortMode("name")}
+              aria-pressed={sortMode === "name"}
+              className={`rounded-md px-3 py-1 text-xs font-medium transition ${
+                sortMode === "name" ? "bg-blue-600 text-white" : "text-slate-600 hover:bg-slate-100"
+              }`}
+            >
+              Nombre (A-Z)
+            </button>
+          </div>
+        </div>
+        <span className="text-xs text-slate-400">{rows.filter((r) => r.status === "MET").length} de {rows.length} en Met</span>
+      </div>
+
       <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead>
@@ -94,7 +145,7 @@ export default function ItemProgressTable({
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {rows.map((row) => (
+            {sortedRows.map((row) => (
               <tr key={row.memberId}>
                 <td className="px-4 py-2.5 font-medium text-slate-800">{row.name}</td>
                 <td className="px-4 py-2.5 text-slate-500">{row.roleBand}</td>
