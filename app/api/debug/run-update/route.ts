@@ -48,13 +48,19 @@ const updates: Update[] = [
 
 const yearsUpdates: { email: string; years: number }[] = [];
 
-// Luis.Gomez.G@ibm.com fails an exact findUnique match despite looking
-// identical in JSON output (allMembers listed it verbatim) — almost
-// certainly a hidden character (stray whitespace / non-breaking space)
-// from however the row was originally seeded. Fall back to a name-based
-// lookup, which sidesteps whatever is wrong with the stored email string.
+// Several emails fail an exact findUnique match despite looking identical
+// in JSON output (allMembers lists them verbatim) — almost certainly a
+// hidden character (stray whitespace / non-breaking space) from however
+// those rows were originally seeded. First found on Luis.Gomez.G@ibm.com;
+// the 2026-08-13 run confirmed the same failure for David, Rodrigo, and
+// Ricardo too (all three showed up as "no member" skips), so this is a
+// wider seeding issue, not a one-off. Fall back to a name-based lookup,
+// which sidesteps whatever is wrong with the stored email string.
 const NAME_FALLBACK: Record<string, string> = {
   "Luis.Gomez.G@ibm.com": "Luis Martin Gomez Gonzalez",
+  "David.Villalobos@ibm.com": "David Villalobos Arguedas",
+  "Rodrigo.Chavarria@ibm.com": "Rodrigo Chavarria",
+  "rlobo@ibm.com": "Ricardo Lobo",
 };
 
 async function findMember(email: string) {

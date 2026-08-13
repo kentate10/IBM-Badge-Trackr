@@ -21,9 +21,21 @@ const CHECK_EMAILS = [
   "jarobles@cr.ibm.com",
 ];
 
+// David, Rodrigo, Ricardo, and Luis's stored emails fail an exact match
+// (same hidden-character issue documented in run-update's NAME_FALLBACK) —
+// a plain findMany-by-email silently drops them. Cross-check by name too so
+// this route's before/after view doesn't miss them the way the raw email
+// query does.
+const CHECK_NAME_FALLBACK = [
+  "David Villalobos Arguedas",
+  "Rodrigo Chavarria",
+  "Ricardo Lobo",
+  "Luis Martin Gomez Gonzalez",
+];
+
 export async function GET() {
   const members = await prisma.member.findMany({
-    where: { email: { in: CHECK_EMAILS } },
+    where: { OR: [{ email: { in: CHECK_EMAILS } }, { name: { in: CHECK_NAME_FALLBACK } }] },
     select: {
       email: true,
       name: true,
