@@ -7,12 +7,13 @@ import { SESSION_COOKIE_NAME } from "@/lib/auth";
 // layout/page via getSession(). This just keeps logged-out visitors from
 // ever rendering a protected page's shell.
 const PUBLIC_PATHS = ["/login"];
-// /api/debug temporarily exempted again 2026-08-12 (afternoon) to apply the
-// Antonio Lara / David Villalobos industry-badge + Mentor corrections found
-// in the fresh w3 pass. Re-gate (remove this exemption) once confirmed
-// applied — same reusable pattern as earlier that day, see
-// badge-tracker-webapp-technical memory for the full write-up.
-const PUBLIC_PREFIXES = ["/api/auth", "/api/debug"];
+// /api/debug/* routes (run-update, verify-update) were re-gated behind the
+// normal session gate on 2026-08-13 after confirming all 11 pending
+// corrections landed (Antonio, David, Diana, Rodrigo, Ricardo, Mariana) —
+// no exemption for them here. The route files stay in the repo, inert
+// without a session, ready to reuse next time a one-off correction is
+// needed (see badge-acceleration-monthly-check skill for the pattern).
+const PUBLIC_PREFIXES = ["/api/auth"];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
