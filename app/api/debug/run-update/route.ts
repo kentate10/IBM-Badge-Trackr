@@ -2,14 +2,11 @@ import { NextResponse } from "next/server";
 import { PrismaClient, Status } from "@prisma/client";
 
 // TEMPORARY, idempotent one-off data-correction route (reused pattern from
-// 2026-08-12). Carries the 2026-08-12 afternoon batch (Antonio Lara's IBM
-// Mentor badge + Professional Services Bronze industry badge; David
-// Villalobos's Life Sciences Bronze industry badge) plus the 2026-08-13
-// second follow-up round: full-credential w3 re-checks surfaced industry
-// badges for Diana, Rodrigo, Ricardo, and Mariana (all previously unknown),
-// and the PSM I -> "Cert: AGILE Scrum Master" equivalence (confirmed by Ken
-// for both PM tables) resolves Rodrigo and Mariana's AGILE column. David's
-// 2026 IBM Core Training was also confirmed done directly by Ken. Safe to
+// 2026-08-12). The 2026-08-12/13 batches (Antonio, David, Diana, Rodrigo's
+// AGILE+industry, Ricardo, Mariana) are already confirmed live in production
+// (see commit 965df1d) — replaced below with the 2026-08-14 batch: Rodrigo
+// Chavarria's Slack reply confirmed Consulting Academy done and 4 years
+// 3 months at IBM (satisfies "Experience (3+ yrs PM/1+ yr IBM)"). Safe to
 // hit more than once (upserts only). Remove this route, verify-update, and
 // the /api/debug middleware exemption once confirmed applied.
 
@@ -18,35 +15,18 @@ const prisma = new PrismaClient();
 type Update = { email: string; itemKey: string; status: Status; percent?: number };
 
 const updates: Update[] = [
-  // --- 2026-08-12 batch ---
-  // Antonio Lara — IBM Mentor badge confirmed held on w3 2026-08-12
-  { email: "alara@cr.ibm.com", itemKey: "ba_exp_mentor", status: "MET", percent: 100 },
-  // Antonio Lara — holds Professional Services Insights and Solutions (Bronze);
-  // resolves his own flagged Bronze-vs-Gold question via the band exception
-  { email: "alara@cr.ibm.com", itemKey: "ba_exp_industry", status: "MET", percent: 100 },
-  { email: "alara@cr.ibm.com", itemKey: "general_industry_badge", status: "MET" },
-  // David Villalobos — holds Life Sciences Insights and Solutions (Bronze);
-  // never answered this question in his Slack reply, fills the General Tracker gap
-  { email: "David.Villalobos@ibm.com", itemKey: "general_industry_badge", status: "MET" },
-
-  // --- 2026-08-13 second follow-up round ---
-  // David Villalobos — 2026 IBM Core Training confirmed done, told directly by Ken
-  { email: "David.Villalobos@ibm.com", itemKey: "general_core_training", status: "MET" },
-  // Diana Quesada Castro — Chemicals and Petroleum Industry Jumpstart, new find
-  { email: "dquesada@ibm.com", itemKey: "general_industry_badge", status: "MET" },
-  // Rodrigo Chavarria Calderon — Media and Entertainment Industry Jumpstart, new find
-  { email: "Rodrigo.Chavarria@ibm.com", itemKey: "general_industry_badge", status: "MET" },
-  // Rodrigo Chavarria Calderon — holds PSM I, satisfies AGILE Scrum Master (PM Experienced)
-  { email: "Rodrigo.Chavarria@ibm.com", itemKey: "pm_exp_agile", status: "MET", percent: 100 },
-  // Ricardo Lobo — Energy, Environment and Utilities Industry Jumpstart, new find
-  { email: "rlobo@ibm.com", itemKey: "general_industry_badge", status: "MET" },
-  // Mariana Carvajal Barrios — Energy, Environment and Utilities Industry Jumpstart, new find
-  { email: "mcarvaja@cr.ibm.com", itemKey: "general_industry_badge", status: "MET" },
-  // Mariana Carvajal Barrios — holds PSM I, satisfies AGILE Scrum Master (PM Expert)
-  { email: "mcarvaja@cr.ibm.com", itemKey: "pm_expert_agile", status: "MET", percent: 100 },
+  // --- 2026-08-14 batch ---
+  // Rodrigo Chavarria Calderon — "Consulting academy completado" (Slack, 2026-08-14)
+  { email: "Rodrigo.Chavarria@ibm.com", itemKey: "general_consulting_academy", status: "MET" },
+  // Rodrigo Chavarria Calderon — 4 years 3 months at IBM, satisfies the
+  // PM Experienced Experience column (same pattern used for David/Federico/Jerry)
+  { email: "Rodrigo.Chavarria@ibm.com", itemKey: "pm_exp_experience", status: "MET" },
 ];
 
-const yearsUpdates: { email: string; years: number }[] = [];
+const yearsUpdates: { email: string; years: number }[] = [
+  // Rodrigo Chavarria Calderon — "4 años y 3 meses en IBM" (Slack, 2026-08-14)
+  { email: "Rodrigo.Chavarria@ibm.com", years: 4.25 },
+];
 
 // Several emails fail an exact findUnique match despite looking identical
 // in JSON output (allMembers lists them verbatim) — almost certainly a
