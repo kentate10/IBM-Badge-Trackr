@@ -3,9 +3,11 @@
 import { useMemo, useState } from "react";
 import type { Status } from "@prisma/client";
 import { STATUS_LABELS, STATUS_ORDER } from "@/lib/labels";
+import StatusBadge from "@/components/StatusBadge";
 
 export type ScopeCell =
-  | { applicable: true; skillItemId: string; status: Status; percent: number }
+  | { applicable: true; kind: "editable"; skillItemId: string; status: Status; percent: number; hasPercent: boolean }
+  | { applicable: true; kind: "readonly"; status: Status; percent: number }
   | { applicable: false };
 
 export type ScopeRow = { memberId: string; name: string; band: string; cells: ScopeCell[] };
@@ -15,14 +17,19 @@ export type ScopeRow = { memberId: string; name: string; band: string; cells: Sc
 // one is one person x every scoped requirement (matching the reference
 // screenshots' layout). Reuses the exact same /api/progress endpoint, which
 // already accepts multiple skillItem updates per member in one call.
+// Some columns (e.g. Thought Leadership) are read-only aggregates of several
+// real items rather than one editable field — those render as a plain
+// StatusBadge instead of a select/input.
 export default function ScopeTable({
   title,
   columns,
   rows: initialRows,
+  note,
 }: {
   title: string;
   columns: string[];
   rows: ScopeRow[];
+  note?: string;
 }) {
   const [rows, setRows] = useState<ScopeRow[]>(initialRows);
   const [saving, setSaving] = useState(false);
@@ -34,7 +41,8 @@ export default function ScopeTable({
       rows.some((row, ri) =>
         row.cells.some((cell, ci) => {
           const initial = initialRows[ri].cells[ci];
-          if (!cell.applicable || !initial.applicable) return false;
+          if (!cell.applicable || cell.kind !== "editable") return false;
+          if (!initial.applicable || initial.kind !== "editable") return false;
           return cell.status !== initial.status || cell.percent !== initial.percent;
         })
       ),
@@ -48,9 +56,10 @@ export default function ScopeTable({
         return {
           ...row,
           cells: row.cells.map((cell, i) => {
-            if (i !== colIndex || !cell.applicable) return cell;
+            if (i !== colIndex || !cell.applicable || cell.kind !== "editable") return cell;
             const nextStatus = patch.status ?? cell.status;
-            const nextPercent = patch.percent !== undefined ? patch.percent : patch.status === "MET" ? 100 : cell.percent;
+            const nextPercent =
+              patch.percent !== undefined ? patch.percent : patch.status === "MET" && cell.hasPercent ? 100 : cell.percent;
             return { ...cell, status: nextStatus, percent: nextPercent };
           }),
         };
@@ -66,9 +75,9 @@ export default function ScopeTable({
       rows.forEach((row, ri) => {
         const updates: { skillItemId: string; status: Status; percent: number }[] = [];
         row.cells.forEach((cell, ci) => {
-          if (!cell.applicable) return;
+          if (!cell.applicable || cell.kind !== "editable") return;
           const initial = initialRows[ri].cells[ci];
-          if (!initial.applicable) return;
+          if (!initial.applicable || initial.kind !== "editable") return;
           if (cell.status !== initial.status || cell.percent !== initial.percent) {
             updates.push({ skillItemId: cell.skillItemId, status: cell.status, percent: cell.percent });
           }
@@ -107,6 +116,8 @@ export default function ScopeTable({
         <span className="text-xs text-slate-400">{rows.length} personas</span>
       </div>
 
+      {note && <p className="text-xs text-slate-400">{note}</p>}
+
       <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-left text-sm">
           <thead>
@@ -129,6 +140,8 @@ export default function ScopeTable({
                   <td key={ci} className="px-3 py-2">
                     {!cell.applicable ? (
                       <span className="text-xs text-slate-300">N/A</span>
+                    ) : cell.kind === "readonly" ? (
+                      <StatusBadge status={cell.status} />
                     ) : (
                       <div className="flex items-center gap-1">
                         <select
@@ -142,17 +155,19 @@ export default function ScopeTable({
                             </option>
                           ))}
                         </select>
-                        <input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={cell.percent}
-                          onChange={(e) => {
-                            const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
-                            updateCell(row.memberId, ci, { percent: v });
-                          }}
-                          className="w-11 rounded-md border border-slate-300 px-1 py-1 text-right text-xs text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        {cell.hasPercent && (
+                          <input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={cell.percent}
+                            onChange={(e) => {
+                              const v = Math.max(0, Math.min(100, Number(e.target.value) || 0));
+                              updateCell(row.memberId, ci, { percent: v });
+                            }}
+                            className="w-11 rounded-md border border-slate-300 px-1 py-1 text-right text-xs text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        )}
                       </div>
                     )}
                   </td>

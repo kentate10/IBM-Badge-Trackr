@@ -3,7 +3,7 @@ import type { Band, Status } from "@prisma/client";
 import StatusDonut from "@/components/charts/StatusDonut";
 import MemberBarChart from "@/components/charts/MemberBarChart";
 import SectionBarChart, { type SectionBarDatum } from "@/components/charts/SectionBarChart";
-import { BAND_LABELS } from "@/lib/labels";
+import { BAND_LABELS, STATUS_ORDER } from "@/lib/labels";
 import { PM_SCOPE_COLUMNS, BA_SCOPE_COLUMNS, scopeKeyForBand, type ScopeColumn } from "@/lib/scope";
 import ScopeTable, { type ScopeRow } from "./ScopeTable";
 
@@ -12,12 +12,21 @@ export const dynamic = "force-dynamic";
 const ALL_BANDS: Band[] = ["FOUNDATION", "EXPERIENCED", "EXPERT"];
 const BAND_ORDER: Record<Band, number> = { FOUNDATION: 0, EXPERIENCED: 1, EXPERT: 2 };
 
+// Best-of ranking for the read-only aggregate columns (e.g. Thought
+// Leadership) — same Met > In Progress > Blocked > Not Met priority used
+// everywhere else via lib/labels' STATUS_ORDER.
+function bestStatus(entries: { status: Status; percent: number }[]): { status: Status; percent: number } {
+  if (entries.length === 0) return { status: "NOT_MET", percent: 0 };
+  return [...entries].sort((a, b) => STATUS_ORDER.indexOf(a.status) - STATUS_ORDER.indexOf(b.status))[0];
+}
+
 export default async function ScopePage() {
   const allKeys = new Set<string>();
   for (const col of [...PM_SCOPE_COLUMNS, ...BA_SCOPE_COLUMNS]) {
     for (const band of ALL_BANDS) {
       const key = scopeKeyForBand(col, band);
       if (key) allKeys.add(key);
+      for (const k of col.aggregateKeysByBand?.[band] ?? []) allKeys.add(k);
     }
   }
 
@@ -39,15 +48,31 @@ export default async function ScopePage() {
         name: m.name,
         band: BAND_LABELS[m.band],
         cells: columns.map((col): ScopeRow["cells"][number] => {
+          const aggKeys = col.aggregateKeysByBand?.[m.band];
+          if (aggKeys && aggKeys.length > 0) {
+            const entries = aggKeys
+              .map((k) => itemByKey.get(k))
+              .filter((it): it is NonNullable<typeof it> => !!it)
+              .map((it) => {
+                const p = progressByMemberItem.get(`${m.id}:${it.id}`);
+                return { status: (p?.status ?? "NOT_MET") as Status, percent: p?.percent ?? 0 };
+              });
+            if (entries.length === 0) return { applicable: false };
+            const best = bestStatus(entries);
+            return { applicable: true, kind: "readonly", status: best.status, percent: best.percent };
+          }
+
           const key = scopeKeyForBand(col, m.band);
           const item = key ? itemByKey.get(key) : undefined;
           if (!item) return { applicable: false };
           const p = progressByMemberItem.get(`${m.id}:${item.id}`);
           return {
             applicable: true,
+            kind: "editable",
             skillItemId: item.id,
             status: (p?.status ?? "NOT_MET") as Status,
             percent: p?.percent ?? 0,
+            hasPercent: item.hasPercent,
           };
         }),
       }));
@@ -102,8 +127,8 @@ export default async function ScopePage() {
       <div>
         <h1 className="text-xl font-semibold text-slate-900">Scope</h1>
         <p className="text-sm text-slate-500">
-          Vista de prioridad — solo los requerimientos marcados como prioridad para este ciclo. No afecta los números del
-          Panel general ni el resto del tracker.
+          Vista de prioridad — mismos datos reales del resto del tracker, solo con menos columnas (los requerimientos
+          marcados como prioridad para este ciclo). No afecta los números del Panel general ni el resto del tracker.
         </p>
       </div>
 
@@ -136,6 +161,7 @@ export default async function ScopePage() {
           title="BA — Industry Skill, Design Thinking, IBM Mentor, Thought Leadership"
           columns={BA_SCOPE_COLUMNS.map((c) => c.label)}
           rows={baRows}
+          note="Thought Leadership es de solo lectura acá: muestra el mejor estado entre los 4 badges 'choose 1' existentes (IC/Property, Speaker/Presenter, Teacher, Champion). Para editarlo, hacelo desde Por requerimiento."
         />
       </ChartCard>
     </div>
