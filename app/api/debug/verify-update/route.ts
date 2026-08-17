@@ -8,18 +8,30 @@ import { SCOPE_KEY_PREFIX } from "@/lib/scope";
 // once confirmed.
 export const dynamic = "force-dynamic";
 
+// Widened 2026-08-17 to the full 16-person roster, for a comprehensive
+// cross-check of Scope's underlying real items (pm_exp_agile/pm_expert_agile,
+// general_industry_badge, pm_exp_badge/pm_expert_badge, pm_exp_itil/
+// pm_expert_itil_specialist, ba_fnd_industry/ba_exp_industry, ba_fnd_design_
+// thinking/ba_exp_design_thinking_cocreator, ba_exp_mentor, and the 4
+// ba_exp_ic_property/speaker/teacher/champion choose-1 badges) against
+// everyone's known-true status, not just the last few batches' people.
 const CHECK_EMAILS = [
-  // 2026-08-14 batch being applied this run
-  "Rodrigo.Chavarria@ibm.com",
-  // earlier 2026-08-12/13 batches, included to reconfirm they're still live
   "alara@cr.ibm.com",
+  "cehernan@cr.ibm.com",
   "David.Villalobos@ibm.com",
   "dquesada@ibm.com",
-  "rlobo@ibm.com",
-  "mcarvaja@cr.ibm.com",
-  "tpereira@cr.ibm.com",
-  "Luis.Gomez.G@ibm.com",
+  "Federico.Cruz.Chaverri@ibm.com",
   "jarobles@cr.ibm.com",
+  "jesegura@cr.ibm.com",
+  "J.Alpizar@ibm.com",
+  "kender.tate@ibm.com",
+  "Luis.Gomez.G@ibm.com",
+  "mcarvaja@cr.ibm.com",
+  "njimenez@cr.ibm.com",
+  "anperez@cr.ibm.com",
+  "rlobo@ibm.com",
+  "Rodrigo.Chavarria@ibm.com",
+  "tpereira@cr.ibm.com",
 ];
 
 // David, Rodrigo, Ricardo, and Luis's stored emails fail an exact match
