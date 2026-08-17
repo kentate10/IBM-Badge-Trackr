@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
+import { SCOPE_KEY_PREFIX } from "@/lib/scope";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,12 @@ export async function GET() {
 
   const [members, items, allProgress, snapshots, weeklySnapshots, links] = await Promise.all([
     prisma.member.findMany({ orderBy: { name: "asc" } }),
-    prisma.skillItem.findMany({ orderBy: { displayOrder: "asc" } }),
+    // Scope-only items are excluded — this export mirrors the original Excel
+    // workbook's two tabs, not the separate Scope view. See lib/scope.ts.
+    prisma.skillItem.findMany({
+      where: { NOT: { key: { startsWith: SCOPE_KEY_PREFIX } } },
+      orderBy: { displayOrder: "asc" },
+    }),
     prisma.progress.findMany(),
     prisma.snapshot.findMany({ orderBy: { takenAt: "asc" }, include: { member: true } }),
     prisma.weeklySnapshot.findMany({ orderBy: { takenAt: "asc" } }),

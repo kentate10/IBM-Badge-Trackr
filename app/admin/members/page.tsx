@@ -1,13 +1,15 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { roleBandLabel } from "@/lib/labels";
+import { SCOPE_KEY_PREFIX } from "@/lib/scope";
 
 export const dynamic = "force-dynamic";
 
 export default async function AdminMembersPage() {
   const [members, items, progress] = await Promise.all([
     prisma.member.findMany({ orderBy: [{ role: "asc" }, { band: "asc" }, { name: "asc" }] }),
-    prisma.skillItem.findMany(),
+    // Scope-only items are excluded — see lib/scope.ts.
+    prisma.skillItem.findMany({ where: { NOT: { key: { startsWith: SCOPE_KEY_PREFIX } } } }),
     prisma.progress.findMany(),
   ]);
 

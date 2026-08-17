@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { roleBandLabel } from "@/lib/labels";
+import { SCOPE_KEY_PREFIX } from "@/lib/scope";
 import ItemSelector from "./ItemSelector";
 import ItemProgressTable, { type ItemMemberRow } from "./ItemProgressTable";
 
@@ -12,7 +13,12 @@ export default async function ByItemPage({
 }) {
   const { item } = await searchParams;
 
-  const allItems = await prisma.skillItem.findMany({ orderBy: { displayOrder: "asc" } });
+  // Scope-only items are managed from their own tab (/admin/scope), not this
+  // one — see lib/scope.ts.
+  const allItems = await prisma.skillItem.findMany({
+    where: { NOT: { key: { startsWith: SCOPE_KEY_PREFIX } } },
+    orderBy: { displayOrder: "asc" },
+  });
 
   if (allItems.length === 0) {
     return <p className="text-sm text-slate-400">No hay requerimientos configurados todavía.</p>;

@@ -9,6 +9,7 @@ import SnapshotButton from "./SnapshotButton";
 import WeekSelector from "./WeekSelector";
 import ExportButtons from "./ExportButtons";
 import { buildRecommendations, type Recommendation } from "@/lib/recommendations";
+import { SCOPE_KEY_PREFIX } from "@/lib/scope";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,10 @@ export default async function AdminDashboard({
 
   const [members, items, allProgress, snapshots, weeklySnapshots] = await Promise.all([
     prisma.member.findMany({ orderBy: { name: "asc" } }),
-    prisma.skillItem.findMany(),
+    // Scope-only items (see lib/scope.ts) are a separate, additive view —
+    // excluded here so the main panel's numbers don't shift when that tab's
+    // data changes.
+    prisma.skillItem.findMany({ where: { NOT: { key: { startsWith: SCOPE_KEY_PREFIX } } } }),
     prisma.progress.findMany(),
     prisma.snapshot.findMany({ orderBy: { takenAt: "asc" } }),
     prisma.weeklySnapshot.findMany({ orderBy: { takenAt: "desc" }, select: { label: true, teamPercent: true } }),

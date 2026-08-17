@@ -16,6 +16,7 @@ export default function Nav({ role, memberName }: NavProps) {
     role === "admin"
       ? [
           { href: "/admin", label: "Panel" },
+          { href: "/admin/scope", label: "Scope" },
           { href: "/admin/members", label: "Equipo" },
           { href: "/admin/by-item", label: "Por requerimiento" },
           { href: "/links", label: "Links" },

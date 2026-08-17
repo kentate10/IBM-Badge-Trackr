@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server";
 import { PrismaClient, Status } from "@prisma/client";
+import { SCOPE_ONLY_ITEMS } from "@/lib/scope";
 
 // TEMPORARY, idempotent one-off data-correction route (reused pattern from
 // 2026-08-12). The 2026-08-12/13 batches (Antonio, David, Diana, Rodrigo's
 // AGILE+industry, Ricardo, Mariana) are already confirmed live in production
 // (see commit 965df1d) — replaced below with the 2026-08-14 batch: Rodrigo
 // Chavarria's Slack reply confirmed Consulting Academy done and 4 years
-// 3 months at IBM (satisfies "Experience (3+ yrs PM/1+ yr IBM)"). Safe to
-// hit more than once (upserts only). Remove this route, verify-update, and
-// the /api/debug middleware exemption once confirmed applied.
+// 3 months at IBM (satisfies "Experience (3+ yrs PM/1+ yr IBM)"). Also
+// ensures the 3 new "Scope" tab SkillItem rows exist (see lib/scope.ts) —
+// schema-free, just new SkillItem rows using the existing Tracker enum, no
+// migration needed. Safe to hit more than once (upserts only). Remove this
+// route, verify-update, and the /api/debug middleware exemption once
+// confirmed applied.
 
 const prisma = new PrismaClient();
 
@@ -54,6 +58,24 @@ async function findMember(email: string) {
 export async function GET() {
   const results: string[] = [];
   const skipped: string[] = [];
+
+  // Ensure the Scope tab's 3 dedicated SkillItem rows exist before anything
+  // else runs (harmless no-op once they're created — upsert is idempotent).
+  for (const si of SCOPE_ONLY_ITEMS) {
+    await prisma.skillItem.upsert({
+      where: { key: si.key },
+      update: {
+        label: si.label,
+        section: si.section,
+        tracker: si.tracker,
+        role: si.role,
+        band: si.band,
+        hasPercent: si.hasPercent,
+      },
+      create: si,
+    });
+    results.push(`ensured skillItem: ${si.key}`);
+  }
 
   for (const u of updates) {
     const member = await findMember(u.email);

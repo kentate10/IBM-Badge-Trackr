@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { isoWeekLabel } from "@/lib/weekLabel";
+import { SCOPE_KEY_PREFIX } from "@/lib/scope";
 import type { Status } from "@prisma/client";
 
 export async function POST(req: NextRequest) {
@@ -17,7 +18,8 @@ export async function POST(req: NextRequest) {
       : isoWeekLabel(new Date());
 
   const members = await prisma.member.findMany();
-  const allItems = await prisma.skillItem.findMany();
+  // Scope-only items are excluded from weekly snapshots too — see lib/scope.ts.
+  const allItems = await prisma.skillItem.findMany({ where: { NOT: { key: { startsWith: SCOPE_KEY_PREFIX } } } });
 
   const statusBreakdown: Record<Status, number> = { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0 };
   const sectionMap = new Map<string, Record<Status, number>>();

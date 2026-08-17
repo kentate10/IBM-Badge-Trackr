@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { SCOPE_KEY_PREFIX } from "@/lib/scope";
 
 // TEMPORARY, READ-ONLY debug endpoint to confirm prisma/update-2026-08-12.ts
 // actually applied its changes to the live database. No auth (nothing here
@@ -59,5 +60,12 @@ export async function GET() {
     orderBy: { name: "asc" },
   });
 
-  return NextResponse.json({ checkedAt: new Date().toISOString(), members, allMembers });
+  // Confirms the 3 Scope-tab-only SkillItem rows exist with the right shape
+  // (see lib/scope.ts) — created via run-update's upsert, not a migration.
+  const scopeItems = await prisma.skillItem.findMany({
+    where: { key: { startsWith: SCOPE_KEY_PREFIX } },
+    select: { key: true, label: true, section: true, role: true, band: true },
+  });
+
+  return NextResponse.json({ checkedAt: new Date().toISOString(), members, allMembers, scopeItems });
 }

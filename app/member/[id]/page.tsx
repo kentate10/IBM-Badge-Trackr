@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import { roleBandLabel } from "@/lib/labels";
+import { SCOPE_KEY_PREFIX } from "@/lib/scope";
 import Nav from "@/components/Nav";
 import ProgressForm, { type ItemRow } from "@/components/ProgressForm";
 import MemberRoleEditor from "@/components/MemberRoleEditor";
@@ -18,9 +19,15 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
   const member = await prisma.member.findUnique({ where: { id } });
   if (!member) notFound();
 
+  // Scope-only items are excluded from each person's own checklist too —
+  // they're managed by admins on the dedicated /admin/scope tab, not here.
+  // See lib/scope.ts.
   const applicableItems = await prisma.skillItem.findMany({
     where: {
-      OR: [{ role: null, band: null }, { role: member.role, band: member.band }],
+      AND: [
+        { OR: [{ role: null, band: null }, { role: member.role, band: member.band }] },
+        { NOT: { key: { startsWith: SCOPE_KEY_PREFIX } } },
+      ],
     },
     orderBy: { displayOrder: "asc" },
   });

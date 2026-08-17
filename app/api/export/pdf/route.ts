@@ -4,6 +4,7 @@ import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import type { Status } from "@prisma/client";
 import { ROLE_LABELS, BAND_LABELS } from "@/lib/labels";
+import { SCOPE_KEY_PREFIX } from "@/lib/scope";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -160,7 +161,8 @@ export async function GET() {
 
   const [members, items, allProgress, weeklySnapshots] = await Promise.all([
     prisma.member.findMany({ orderBy: { name: "asc" } }),
-    prisma.skillItem.findMany(),
+    // Scope-only items are excluded — see lib/scope.ts.
+    prisma.skillItem.findMany({ where: { NOT: { key: { startsWith: SCOPE_KEY_PREFIX } } } }),
     prisma.progress.findMany(),
     prisma.weeklySnapshot.findMany({ orderBy: { takenAt: "asc" } }),
   ]);
