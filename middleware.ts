@@ -7,13 +7,12 @@ import { SESSION_COOKIE_NAME } from "@/lib/auth";
 // layout/page via getSession(). This just keeps logged-out visitors from
 // ever rendering a protected page's shell.
 const PUBLIC_PATHS = ["/login"];
-// /api/debug/* reopened again 2026-08-17 (was briefly re-gated, but more
-// verification work followed in the same session before that closure was
-// ever pushed) — Ken asked for a full audit of Scope's underlying real data
-// against everyone's known-true status, which needs a wider verify-update
-// read (see CHECK_EMAILS below, now all 16). Re-gate again once that audit
-// and any resulting corrections are confirmed applied.
-const PUBLIC_PREFIXES = ["/api/auth", "/api/debug"];
+// /api/debug/* re-gated 2026-08-17 after the full 16-person audit of
+// Scope's underlying real data came back clean (one flagged inconsistency —
+// Luis Gomez's general_industry_badge — needs Ken's call, not an
+// auto-fix). No exemption for them here; reopen next time a one-off
+// correction is needed (see badge-acceleration-monthly-check skill).
+const PUBLIC_PREFIXES = ["/api/auth"];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
