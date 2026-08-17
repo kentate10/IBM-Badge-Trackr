@@ -1,6 +1,6 @@
 import type { Band } from "@prisma/client";
 
-// The "Scope" tab (added 2026-08-14) is a deliberately reduced, priority-only
+// The "Scope" tab (added 2026-08-17) is a deliberately reduced, priority-only
 // view: same roster as the full tracker, but only the specific requirement
 // columns leadership flagged as priority (two reference screenshots — PM
 // roster and BA roster — supplied by Ken). It's additive and isolated from
@@ -21,7 +21,7 @@ export function scopeKeyForBand(col: ScopeColumn, band: Band): string | null {
 }
 
 // PM roster columns, per the "PM Roster & Certification Status" screenshot
-// (2026-08-14): Scrum Master, Industry Badge (Silver for Experienced / Gold
+// (2026-08-17): Scrum Master, Industry Badge (Silver for Experienced / Gold
 // for Expert — a stricter, tiered requirement than the untiered General
 // Tracker "Industry badge" column), IBM PM Badge, ITIL (On Hold — matches
 // the existing optional/reference-only treatment, just relabeled).
@@ -36,7 +36,7 @@ export const PM_SCOPE_COLUMNS: ScopeColumn[] = [
 ];
 
 // BA roster columns, per the "BA Roster & Certification Status" screenshot
-// (2026-08-14): Industry Skill, Design Thinking, IBM Mentor (Expert only),
+// (2026-08-17): Industry Skill, Design Thinking, IBM Mentor (Expert only),
 // Thought Leadership (Expert only — consolidates the 4 existing "choose 1"
 // badges — IC/Property, Speaker/Presenter, Teacher/Educator, Profession
 // Champion — into one tracked column, matching how the screenshot shows it
