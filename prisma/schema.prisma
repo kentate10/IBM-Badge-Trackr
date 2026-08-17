@@ -44,6 +44,7 @@ model Member {
   updatedAt   DateTime   @updatedAt
   progress    Progress[]
   snapshots   Snapshot[]
+  comments    Comment[]
 }
 
 // Defines every field that can appear in either tracker (Skills Tracker Week 0
@@ -79,6 +80,24 @@ model Progress {
 
   @@unique([memberId, skillItemId])
   @@index([memberId])
+}
+
+// A free-form, timestamped note on a member's profile. Unlike Member.notes
+// (a single legacy field, kept as-is, not shown here) this is an append-only
+// feed — multiple entries over time, each with its own date, shown on
+// /member/[id]. Visible to the member themselves (read-only) as well as
+// admins (who can add/delete) — same visibility as the existing notes
+// banner already on that page.
+model Comment {
+  id        String   @id @default(cuid())
+  memberId  String
+  author    String?
+  body      String
+  createdAt DateTime @default(now())
+  member    Member   @relation(fields: [memberId], references: [id], onDelete: Cascade)
+
+  @@index([memberId])
+  @@index([createdAt])
 }
 
 // A point-in-time rollup per member, created whenever an admin saves a

@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import type { Status } from "@prisma/client";
 import { STATUS_LABELS, STATUS_ORDER } from "@/lib/labels";
 
@@ -147,7 +148,11 @@ export default function ItemProgressTable({
           <tbody className="divide-y divide-slate-100">
             {sortedRows.map((row) => (
               <tr key={row.memberId}>
-                <td className="px-4 py-2.5 font-medium text-slate-800">{row.name}</td>
+                <td className="px-4 py-2.5 font-medium">
+                  <Link href={`/member/${row.memberId}`} className="text-blue-600 hover:underline">
+                    {row.name}
+                  </Link>
+                </td>
                 <td className="px-4 py-2.5 text-slate-500">{row.roleBand}</td>
                 <td className="px-4 py-2.5">
                   <select

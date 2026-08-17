@@ -79,5 +79,18 @@ export async function GET() {
     select: { key: true, label: true, section: true, role: true, band: true },
   });
 
-  return NextResponse.json({ checkedAt: new Date().toISOString(), members, allMembers, scopeItems });
+  // Confirms the "Comment" table (see prisma/schema.prisma +
+  // run-update's ensureCommentTable) actually exists — before run-update
+  // creates it, this throws "relation does not exist", which we report
+  // instead of letting the whole route 500, so this same call works as the
+  // "before" and "after" check in the usual verification ritual.
+  let commentTable: { exists: true; count: number } | { exists: false; error: string };
+  try {
+    const count = await prisma.comment.count();
+    commentTable = { exists: true, count };
+  } catch (err) {
+    commentTable = { exists: false, error: err instanceof Error ? err.message : String(err) };
+  }
+
+  return NextResponse.json({ checkedAt: new Date().toISOString(), members, allMembers, scopeItems, commentTable });
 }

@@ -7,6 +7,8 @@ import { SCOPE_KEY_PREFIX } from "@/lib/scope";
 import Nav from "@/components/Nav";
 import ProgressForm, { type ItemRow } from "@/components/ProgressForm";
 import MemberRoleEditor from "@/components/MemberRoleEditor";
+import MemberDetailsEditor from "@/components/MemberDetailsEditor";
+import MemberComments, { type CommentRow } from "@/components/MemberComments";
 
 export default async function MemberPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -34,6 +36,17 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
 
   const existingProgress = await prisma.progress.findMany({ where: { memberId: member.id } });
   const progressByItem = new Map(existingProgress.map((p) => [p.skillItemId, p]));
+
+  // Guarded: right after this feature first deploys, the Comment table may
+  // not exist yet until /api/debug/run-update's ensureCommentTable() has
+  // been hit (see that route) — fall back to an empty list rather than 500.
+  let comments: CommentRow[] = [];
+  try {
+    const rows = await prisma.comment.findMany({ where: { memberId: member.id }, orderBy: { createdAt: "desc" } });
+    comments = rows.map((c) => ({ id: c.id, author: c.author, body: c.body, createdAt: c.createdAt.toISOString() }));
+  } catch {
+    comments = [];
+  }
 
   const rows: ItemRow[] = applicableItems.map((item) => {
     const p = progressByItem.get(item.id);
@@ -71,7 +84,19 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
               {member.yearsAtIbm != null && ` · ${member.yearsAtIbm} años en IBM`}
             </p>
             {session.role === "admin" && (
-              <MemberRoleEditor memberId={member.id} initialRole={member.role} initialBand={member.band} />
+              <div className="flex flex-wrap items-start gap-4">
+                <MemberRoleEditor memberId={member.id} initialRole={member.role} initialBand={member.band} />
+                <MemberDetailsEditor
+                  memberId={member.id}
+                  initial={{
+                    name: member.name,
+                    email: member.email,
+                    slackHandle: member.slackHandle,
+                    yearsAtIbm: member.yearsAtIbm,
+                    isManager: member.isManager,
+                  }}
+                />
+              </div>
             )}
           </div>
           <div className="text-right">
@@ -93,6 +118,10 @@ export default async function MemberPage({ params }: { params: Promise<{ id: str
             otherwise the checklist below would keep showing the old items
             until a manual hard refresh. */}
         <ProgressForm key={`${member.role}-${member.band}`} memberId={member.id} items={rows} />
+
+        <div className="mt-8">
+          <MemberComments memberId={member.id} initialComments={comments} isAdmin={session.role === "admin"} />
+        </div>
       </div>
     </div>
   );

@@ -2,6 +2,56 @@ import { NextResponse } from "next/server";
 import { PrismaClient, Status } from "@prisma/client";
 import { SCOPE_ONLY_ITEMS } from "@/lib/scope";
 
+const prisma = new PrismaClient();
+
+// 2026-08-17: the "Comment" table (see prisma/schema.prisma) is a genuine new
+// table, not just new rows on an existing one like the Scope items below —
+// this sandbox can't run `prisma db push`/`migrate` (binaries.prisma.sh is
+// blocked here), and Railway's build only runs `prisma generate` (client
+// codegen), never a schema push. So the table is created by hand via raw SQL
+// through the already-generated, already-working Prisma Client (which needs
+// no engine-binary download at runtime) — same "temporary debug route" trick
+// as everything else in this file, just DDL instead of DML. Hand-written to
+// match Prisma's own default naming/typing conventions exactly (TEXT columns,
+// "<Table>_pkey"/"<Table>_<col>_fkey"/"<Table>_<col>_idx" names, app-generated
+// cuid so no DB default on "id", DB-level default only on createdAt since
+// @default(now()) is the one default Prisma pushes to Postgres) so that a
+// real `prisma db push` from a machine with normal internet access later
+// would see "already in sync" — nothing to reconcile. Idempotent: every
+// statement is IF NOT EXISTS or guarded, safe to hit more than once.
+async function ensureCommentTable(): Promise<string> {
+  await prisma.$executeRawUnsafe(`
+    CREATE TABLE IF NOT EXISTS "Comment" (
+      "id" TEXT NOT NULL,
+      "memberId" TEXT NOT NULL,
+      "author" TEXT,
+      "body" TEXT NOT NULL,
+      "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      CONSTRAINT "Comment_pkey" PRIMARY KEY ("id")
+    );
+  `);
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "Comment_memberId_idx" ON "Comment"("memberId");`
+  );
+  await prisma.$executeRawUnsafe(
+    `CREATE INDEX IF NOT EXISTS "Comment_createdAt_idx" ON "Comment"("createdAt");`
+  );
+  await prisma.$executeRawUnsafe(`
+    DO $$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'Comment_memberId_fkey'
+      ) THEN
+        ALTER TABLE "Comment"
+          ADD CONSTRAINT "Comment_memberId_fkey"
+          FOREIGN KEY ("memberId") REFERENCES "Member"("id")
+          ON DELETE CASCADE ON UPDATE CASCADE;
+      END IF;
+    END $$;
+  `);
+  return "ensured table: Comment (+ 2 indexes + FK to Member)";
+}
+
 // TEMPORARY, idempotent one-off data-correction route (reused pattern from
 // 2026-08-12). The 2026-08-12/13 batches (Antonio, David, Diana, Rodrigo's
 // AGILE+industry, Ricardo, Mariana) are already confirmed live in production
@@ -13,8 +63,6 @@ import { SCOPE_ONLY_ITEMS } from "@/lib/scope";
 // migration needed. Safe to hit more than once (upserts only). Remove this
 // route, verify-update, and the /api/debug middleware exemption once
 // confirmed applied.
-
-const prisma = new PrismaClient();
 
 type Update = { email: string; itemKey: string; status: Status; percent?: number };
 
@@ -69,6 +117,11 @@ async function findMember(email: string) {
 export async function GET() {
   const results: string[] = [];
   const skipped: string[] = [];
+
+  // Create the Comment table first (see ensureCommentTable's comment above)
+  // — everything below this can then safely assume it exists, same as any
+  // other table in the schema.
+  results.push(await ensureCommentTable());
 
   // Ensure the Scope tab's 3 dedicated SkillItem rows exist before anything
   // else runs (harmless no-op once they're created — upsert is idempotent).

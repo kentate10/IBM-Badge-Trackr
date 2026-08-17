@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import Link from "next/link";
 import type { Status } from "@prisma/client";
 import { STATUS_LABELS, STATUS_ORDER } from "@/lib/labels";
 import StatusBadge from "@/components/StatusBadge";
@@ -134,7 +135,11 @@ export default function ScopeTable({
           <tbody className="divide-y divide-slate-100">
             {rows.map((row) => (
               <tr key={row.memberId}>
-                <td className="whitespace-nowrap px-3 py-2 font-medium text-slate-800">{row.name}</td>
+                <td className="whitespace-nowrap px-3 py-2 font-medium">
+                  <Link href={`/member/${row.memberId}`} className="text-blue-600 hover:underline">
+                    {row.name}
+                  </Link>
+                </td>
                 <td className="whitespace-nowrap px-3 py-2 text-slate-500">{row.band}</td>
                 {row.cells.map((cell, ci) => (
                   <td key={ci} className="px-3 py-2">
