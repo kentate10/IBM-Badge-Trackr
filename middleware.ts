@@ -7,10 +7,14 @@ import { SESSION_COOKIE_NAME } from "@/lib/auth";
 // layout/page via getSession(). This just keeps logged-out visitors from
 // ever rendering a protected page's shell.
 const PUBLIC_PATHS = ["/login"];
-// /api/debug/* temporarily reopened 2026-08-14 to apply Rodrigo's Consulting
-// Academy + Experience correction (see app/api/debug/run-update/route.ts).
-// Re-gate this again once confirmed applied via verify-update.
-const PUBLIC_PREFIXES = ["/api/auth", "/api/debug"];
+// /api/debug/* re-gated behind the normal session gate on 2026-08-17 after
+// confirming all of this round's corrections landed via verify-update:
+// Rodrigo's Consulting Academy, Experience, years, and the restored
+// Industry Badge, plus the 3 new Scope-tab SkillItem rows (see lib/scope.ts).
+// No exemption for them here. The route files stay in the repo, inert
+// without a session, ready to reuse next time a one-off correction is
+// needed (see badge-acceleration-monthly-check skill for the pattern).
+const PUBLIC_PREFIXES = ["/api/auth"];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
