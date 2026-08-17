@@ -7,14 +7,13 @@ import { SESSION_COOKIE_NAME } from "@/lib/auth";
 // layout/page via getSession(). This just keeps logged-out visitors from
 // ever rendering a protected page's shell.
 const PUBLIC_PATHS = ["/login"];
-// /api/debug/* reopened again 2026-08-17 (same day as the last re-gate) —
-// run-update/route.ts now also creates the new "Comment" table (see its
-// ensureCommentTable(), needed because this sandbox can't run
-// `prisma db push`/migrate — see prisma/schema.prisma's Comment model).
-// Needs to be hit once via a normal GET after this deploys, then re-gated
-// again (remove "/api/debug" below) in a follow-up commit — same ritual as
-// every previous cycle, see badge-acceleration-monthly-check skill.
-const PUBLIC_PREFIXES = ["/api/auth", "/api/debug"];
+// /api/debug/* re-gated 2026-08-17 (again) — confirmed via verify-update
+// that ensureCommentTable() created the "Comment" table cleanly (exists:
+// true, count: 0, all Rodrigo data intact) after commit 19ecc98 deployed.
+// No exemption for them here; reopen next time a one-off correction or
+// schema-adjacent change is needed (see badge-acceleration-monthly-check
+// skill).
+const PUBLIC_PREFIXES = ["/api/auth"];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
