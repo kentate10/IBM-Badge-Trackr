@@ -19,12 +19,23 @@ const prisma = new PrismaClient();
 type Update = { email: string; itemKey: string; status: Status; percent?: number };
 
 const updates: Update[] = [
-  // --- 2026-08-14 batch ---
+  // --- 2026-08-14 batch (confirmed applied 2026-08-17, see verify-update) ---
   // Rodrigo Chavarria Calderon — "Consulting academy completado" (Slack, 2026-08-14)
   { email: "Rodrigo.Chavarria@ibm.com", itemKey: "general_consulting_academy", status: "MET" },
   // Rodrigo Chavarria Calderon — 4 years 3 months at IBM, satisfies the
   // PM Experienced Experience column (same pattern used for David/Federico/Jerry)
   { email: "Rodrigo.Chavarria@ibm.com", itemKey: "pm_exp_experience", status: "MET" },
+
+  // --- 2026-08-17 follow-up: restore a drifted field found during verify-update ---
+  // Rodrigo Chavarria Calderon — general_industry_badge had drifted to
+  // IN_PROGRESS (was MET as of commit 965df1d / 2026-08-13, confirmed via
+  // w3 full-credential check: Media and Entertainment Industry Jumpstart,
+  // and Rodrigo re-confirmed holding it directly in his 2026-08-14 Slack
+  // reply). Cause of the drift is unconfirmed (possibly a manual edit in
+  // the live app during 2026-08-14/17) — restoring to the verified-correct
+  // value per the standing rule that any industry badge tier = Met on this
+  // untiered General Tracker column. Flagged to Ken regardless.
+  { email: "Rodrigo.Chavarria@ibm.com", itemKey: "general_industry_badge", status: "MET" },
 ];
 
 const yearsUpdates: { email: string; years: number }[] = [
