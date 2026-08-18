@@ -2,7 +2,14 @@
 
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 
-export type SectionBarDatum = { name: string; met: number; inProgress: number; blocked: number; notMet: number };
+export type SectionBarDatum = {
+  name: string;
+  met: number;
+  inProgress: number;
+  blocked: number;
+  expired: number;
+  notMet: number;
+};
 
 export default function SectionBarChart({ data }: { data: SectionBarDatum[] }) {
   const height = Math.max(220, data.length * 40);
@@ -16,6 +23,7 @@ export default function SectionBarChart({ data }: { data: SectionBarDatum[] }) {
         <Bar dataKey="met" stackId="a" fill="#10b981" name="Met" radius={[4, 0, 0, 4]} />
         <Bar dataKey="inProgress" stackId="a" fill="#f59e0b" name="In Progress" />
         <Bar dataKey="blocked" stackId="a" fill="#ea580c" name="Blocked" />
+        <Bar dataKey="expired" stackId="a" fill="#8b5cf6" name="Expired" />
         <Bar dataKey="notMet" stackId="a" fill="#f43f5e" name="Not Met" radius={[0, 4, 4, 0]} />
       </BarChart>
     </ResponsiveContainer>

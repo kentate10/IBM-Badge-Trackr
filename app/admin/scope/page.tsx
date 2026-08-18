@@ -70,6 +70,7 @@ export default async function ScopePage() {
             applicable: true,
             kind: "editable",
             skillItemId: item.id,
+            key: item.key,
             status: (p?.status ?? "NOT_MET") as Status,
             percent: p?.percent ?? 0,
             hasPercent: item.hasPercent,
@@ -82,7 +83,7 @@ export default async function ScopePage() {
   const baRows = buildRows("BA", BA_SCOPE_COLUMNS);
 
   // --- chart aggregation, across every applicable cell in both tables ---
-  const statusCounts: Record<Status, number> = { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0 };
+  const statusCounts: Record<Status, number> = { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0, EXPIRED: 0 };
   const byColumn = new Map<string, Record<Status, number>>();
   const memberPct: { name: string; pct: number }[] = [];
 
@@ -101,7 +102,7 @@ export default async function ScopePage() {
         statusCounts[cell.status] += 1;
         if (cell.status === "MET") met += 1;
         const colLabel = group.columns[i].label;
-        if (!byColumn.has(colLabel)) byColumn.set(colLabel, { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0 });
+        if (!byColumn.has(colLabel)) byColumn.set(colLabel, { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0, EXPIRED: 0 });
         byColumn.get(colLabel)![cell.status] += 1;
       });
       memberPct.push({ name: row.name, pct: total ? Math.round((met / total) * 100) : 0 });
@@ -119,6 +120,7 @@ export default async function ScopePage() {
     met: c.MET,
     inProgress: c.IN_PROGRESS,
     blocked: c.BLOCKED,
+    expired: c.EXPIRED,
     notMet: c.NOT_MET,
   }));
 

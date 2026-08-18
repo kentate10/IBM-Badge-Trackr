@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Status } from "@prisma/client";
-import { STATUS_LABELS, STATUS_ORDER } from "@/lib/labels";
+import { STATUS_LABELS, STATUS_ORDER, statusOptionsForKey } from "@/lib/labels";
 
 export type ItemMemberRow = {
   memberId: string;
@@ -23,10 +23,12 @@ const STATUS_RANK: Record<Status, number> = Object.fromEntries(
 
 export default function ItemProgressTable({
   skillItemId,
+  itemKey,
   hasPercent,
   rows: initialRows,
 }: {
   skillItemId: string;
+  itemKey: string;
   hasPercent: boolean;
   rows: ItemMemberRow[];
 }) {
@@ -35,6 +37,11 @@ export default function ItemProgressTable({
   const [error, setError] = useState<string | null>(null);
   const [savedAt, setSavedAt] = useState<Date | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>("status");
+
+  // This table is always scoped to one single requirement (picked in the
+  // parent page's ItemSelector) applied across every row, so the allowed
+  // status options only need computing once per item, not per row.
+  const statusOptions = statusOptionsForKey(itemKey);
 
   const dirty = useMemo(
     () => rows.some((r, i) => r.status !== initialRows[i].status || r.percent !== initialRows[i].percent),
@@ -160,7 +167,7 @@ export default function ItemProgressTable({
                     onChange={(e) => updateRow(row.memberId, { status: e.target.value as Status })}
                     className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    {STATUS_ORDER.map((s) => (
+                    {statusOptions.map((s) => (
                       <option key={s} value={s}>
                         {STATUS_LABELS[s]}
                       </option>

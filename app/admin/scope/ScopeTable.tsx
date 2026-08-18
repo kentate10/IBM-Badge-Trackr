@@ -3,11 +3,11 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import type { Status } from "@prisma/client";
-import { STATUS_LABELS, STATUS_ORDER } from "@/lib/labels";
+import { STATUS_LABELS, statusOptionsForKey } from "@/lib/labels";
 import StatusBadge from "@/components/StatusBadge";
 
 export type ScopeCell =
-  | { applicable: true; kind: "editable"; skillItemId: string; status: Status; percent: number; hasPercent: boolean }
+  | { applicable: true; kind: "editable"; skillItemId: string; key: string; status: Status; percent: number; hasPercent: boolean }
   | { applicable: true; kind: "readonly"; status: Status; percent: number }
   | { applicable: false };
 
@@ -154,7 +154,7 @@ export default function ScopeTable({
                           onChange={(e) => updateCell(row.memberId, ci, { status: e.target.value as Status })}
                           className="rounded-md border border-slate-300 px-1.5 py-1 text-xs text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
                         >
-                          {STATUS_ORDER.map((s) => (
+                          {statusOptionsForKey(cell.key).map((s) => (
                             <option key={s} value={s}>
                               {STATUS_LABELS[s]}
                             </option>

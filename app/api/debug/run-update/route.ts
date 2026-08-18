@@ -52,6 +52,20 @@ async function ensureCommentTable(): Promise<string> {
   return "ensured table: Comment (+ 2 indexes + FK to Member)";
 }
 
+// 2026-08-18: Status gains a 5th value, EXPIRED — Ken's ask, so the ITIL
+// certification columns (see EXPIRABLE_ITEM_KEYS in lib/labels.ts) can be
+// marked "lapsed" instead of just Met/Not Met. Adding a value to a native
+// Postgres enum is DDL, same "can't run prisma db push in this sandbox"
+// situation as ensureCommentTable above, but a single statement instead of a
+// whole table. IF NOT EXISTS makes it safe to hit more than once. Kept as
+// its own lone $executeRawUnsafe call, never batched into $transaction —
+// Postgres doesn't allow using a brand-new enum value in the same
+// transaction that added it, so a standalone statement sidesteps that.
+async function ensureExpiredStatus(): Promise<string> {
+  await prisma.$executeRawUnsafe(`ALTER TYPE "Status" ADD VALUE IF NOT EXISTS 'EXPIRED';`);
+  return "ensured enum value: Status.EXPIRED";
+}
+
 // TEMPORARY, idempotent one-off data-correction route (reused pattern from
 // 2026-08-12). The 2026-08-12/13 batches (Antonio, David, Diana, Rodrigo's
 // AGILE+industry, Ricardo, Mariana) are already confirmed live in production
@@ -122,6 +136,10 @@ export async function GET() {
   // — everything below this can then safely assume it exists, same as any
   // other table in the schema.
   results.push(await ensureCommentTable());
+
+  // Add the Status.EXPIRED enum value before anything else runs (see
+  // ensureExpiredStatus's comment above) — safe no-op once it already exists.
+  results.push(await ensureExpiredStatus());
 
   // Ensure the Scope tab's 3 dedicated SkillItem rows exist before anything
   // else runs (harmless no-op once they're created — upsert is idempotent).

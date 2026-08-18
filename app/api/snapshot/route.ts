@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
   // Scope-only items are excluded from weekly snapshots too — see lib/scope.ts.
   const allItems = await prisma.skillItem.findMany({ where: { NOT: { key: { startsWith: SCOPE_KEY_PREFIX } } } });
 
-  const statusBreakdown: Record<Status, number> = { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0 };
+  const statusBreakdown: Record<Status, number> = { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0, EXPIRED: 0 };
   const sectionMap = new Map<string, Record<Status, number>>();
   const memberRows: { memberId: string; metCount: number; totalCount: number; percentComplete: number }[] = [];
 
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
       if (status === "MET") metCount += 1;
 
       if (!sectionMap.has(item.section)) {
-        sectionMap.set(item.section, { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0 });
+        sectionMap.set(item.section, { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0, EXPIRED: 0 });
       }
       sectionMap.get(item.section)![status] += 1;
     }
@@ -60,6 +60,7 @@ export async function POST(req: NextRequest) {
       met: counts.MET,
       inProgress: counts.IN_PROGRESS,
       blocked: counts.BLOCKED,
+      expired: counts.EXPIRED,
       notMet: counts.NOT_MET,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));

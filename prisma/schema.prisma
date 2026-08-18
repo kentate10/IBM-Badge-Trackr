@@ -23,6 +23,13 @@ enum Status {
   NOT_MET
   IN_PROGRESS
   BLOCKED
+  // Added 2026-08-18: credential was earned before but has since lapsed —
+  // currently only offered in the UI for renewal-based certs (ITIL). See
+  // EXPIRABLE_ITEM_KEYS in lib/labels.ts. Applied to the live DB via a raw
+  // `ALTER TYPE "Status" ADD VALUE` (see app/api/debug/run-update/route.ts's
+  // ensureExpiredStatus()), same pattern as every other schema change this
+  // sandbox can't push directly.
+  EXPIRED
 }
 
 enum Tracker {
@@ -127,7 +134,7 @@ model WeeklySnapshot {
   label            String     @unique
   takenAt          DateTime   @default(now())
   teamPercent      Float
-  // { MET, NOT_MET, IN_PROGRESS, BLOCKED } counts across the whole team
+  // { MET, NOT_MET, IN_PROGRESS, BLOCKED, EXPIRED } counts across the whole team
   statusBreakdown  Json
   // [{ name, met, inProgress, blocked, notMet }] per tracker section
   sectionBreakdown Json

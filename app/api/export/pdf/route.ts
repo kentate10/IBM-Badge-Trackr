@@ -62,7 +62,7 @@ function renderPdf(data: {
   below50: number;
   totalMembers: number;
   memberRows: { name: string; roleBand: string; pct: number; met: number; total: number }[];
-  sectionRows: { name: string; met: number; inProgress: number; blocked: number; notMet: number }[];
+  sectionRows: { name: string; met: number; inProgress: number; blocked: number; expired: number; notMet: number }[];
   weeklySnapshots: { label: string; takenAt: Date; teamPercent: number }[];
 }): Promise<Buffer> {
   return new Promise<Buffer>((resolve, reject) => {
@@ -117,11 +117,12 @@ function renderPdf(data: {
       x: left,
       startY: doc.y,
       columns: [
-        { header: "Sección", key: "name", width: 200 },
-        { header: "Met", key: "met", width: 70 },
-        { header: "In Progress", key: "inProgress", width: 80 },
-        { header: "Blocked", key: "blocked", width: 70 },
-        { header: "Not Met", key: "notMet", width: 70 },
+        { header: "Sección", key: "name", width: 170 },
+        { header: "Met", key: "met", width: 55 },
+        { header: "In Progress", key: "inProgress", width: 75 },
+        { header: "Blocked", key: "blocked", width: 60 },
+        { header: "Expired", key: "expired", width: 60 },
+        { header: "Not Met", key: "notMet", width: 60 },
       ],
       rows: data.sectionRows,
     });
@@ -173,7 +174,7 @@ export async function GET() {
     progressByMember.get(p.memberId)!.push(p);
   }
 
-  const statusCounts: Record<Status, number> = { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0 };
+  const statusCounts: Record<Status, number> = { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0, EXPIRED: 0 };
   const sectionCounts = new Map<string, Record<Status, number>>();
   const memberRows: { name: string; roleBand: string; pct: number; met: number; total: number }[] = [];
 
@@ -188,7 +189,7 @@ export async function GET() {
       statusCounts[status] += 1;
       if (status === "MET") met += 1;
       if (!sectionCounts.has(item.section)) {
-        sectionCounts.set(item.section, { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0 });
+        sectionCounts.set(item.section, { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0, EXPIRED: 0 });
       }
       sectionCounts.get(item.section)![status] += 1;
     }
@@ -208,7 +209,7 @@ export async function GET() {
   const below50 = memberRows.filter((m) => m.pct < 50).length;
 
   const sectionRows = [...sectionCounts.entries()]
-    .map(([name, c]) => ({ name, met: c.MET, inProgress: c.IN_PROGRESS, blocked: c.BLOCKED, notMet: c.NOT_MET }))
+    .map(([name, c]) => ({ name, met: c.MET, inProgress: c.IN_PROGRESS, blocked: c.BLOCKED, expired: c.EXPIRED, notMet: c.NOT_MET }))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const buffer = await renderPdf({

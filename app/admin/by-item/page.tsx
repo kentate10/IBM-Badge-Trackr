@@ -75,7 +75,13 @@ export default async function ByItemPage({
         </p>
       </div>
 
-      <ItemProgressTable key={selectedItem.key} skillItemId={selectedItem.id} hasPercent={selectedItem.hasPercent} rows={rows} />
+      <ItemProgressTable
+        key={selectedItem.key}
+        skillItemId={selectedItem.id}
+        itemKey={selectedItem.key}
+        hasPercent={selectedItem.hasPercent}
+        rows={rows}
+      />
     </div>
   );
 }

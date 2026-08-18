@@ -7,13 +7,12 @@ import { SESSION_COOKIE_NAME } from "@/lib/auth";
 // layout/page via getSession(). This just keeps logged-out visitors from
 // ever rendering a protected page's shell.
 const PUBLIC_PATHS = ["/login"];
-// /api/debug/* re-gated 2026-08-17 (again) — confirmed via verify-update
-// that ensureCommentTable() created the "Comment" table cleanly (exists:
-// true, count: 0, all Rodrigo data intact) after commit 19ecc98 deployed.
-// No exemption for them here; reopen next time a one-off correction or
-// schema-adjacent change is needed (see badge-acceleration-monthly-check
-// skill).
-const PUBLIC_PREFIXES = ["/api/auth"];
+// /api/debug/* reopened 2026-08-18 to run ensureExpiredStatus() (adds the
+// Status.EXPIRED enum value — see app/api/debug/run-update/route.ts) via a
+// plain web_fetch hit, same one-deploy-cycle ritual as every prior
+// schema-adjacent change. Re-gate (remove "/api/debug" below) once
+// verify-update confirms statusEnumValues includes EXPIRED.
+const PUBLIC_PREFIXES = ["/api/auth", "/api/debug"];
 
 export function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;

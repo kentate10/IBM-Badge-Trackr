@@ -92,5 +92,26 @@ export async function GET() {
     commentTable = { exists: false, error: err instanceof Error ? err.message : String(err) };
   }
 
-  return NextResponse.json({ checkedAt: new Date().toISOString(), members, allMembers, scopeItems, commentTable });
+  // Confirms the Status enum now includes EXPIRED (see run-update's
+  // ensureExpiredStatus) — before that runs, this lists the original 4
+  // values, so this call doubles as the before/after check same as
+  // commentTable above.
+  let statusEnumValues: string[];
+  try {
+    const rows = await prisma.$queryRawUnsafe<{ enumlabel: string }[]>(
+      `SELECT e.enumlabel FROM pg_type t JOIN pg_enum e ON t.oid = e.enumtypid WHERE t.typname = 'Status' ORDER BY e.enumsortorder;`
+    );
+    statusEnumValues = rows.map((r) => r.enumlabel);
+  } catch (err) {
+    statusEnumValues = [`error: ${err instanceof Error ? err.message : String(err)}`];
+  }
+
+  return NextResponse.json({
+    checkedAt: new Date().toISOString(),
+    members,
+    allMembers,
+    scopeItems,
+    commentTable,
+    statusEnumValues,
+  });
 }

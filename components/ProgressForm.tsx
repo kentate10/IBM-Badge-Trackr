@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Status } from "@prisma/client";
-import { STATUS_LABELS, STATUS_ORDER } from "@/lib/labels";
+import { STATUS_LABELS, statusOptionsForKey } from "@/lib/labels";
 
 export type ItemRow = {
   skillItemId: string;
@@ -110,7 +110,7 @@ export default function ProgressForm({ memberId, items }: { memberId: string; it
                     onChange={(e) => updateRow(row.skillItemId, { status: e.target.value as Status })}
                     className="rounded-lg border border-slate-300 px-2.5 py-1.5 text-sm text-slate-700 outline-none focus:ring-2 focus:ring-blue-500"
                   >
-                    {STATUS_ORDER.map((s) => (
+                    {statusOptionsForKey(row.key).map((s) => (
                       <option key={s} value={s}>
                         {STATUS_LABELS[s]}
                       </option>

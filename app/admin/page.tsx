@@ -43,7 +43,7 @@ export default async function AdminDashboard({
     progressByMember.get(p.memberId)!.push(p);
   }
 
-  const liveStatusCounts: Record<Status, number> = { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0 };
+  const liveStatusCounts: Record<Status, number> = { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0, EXPIRED: 0 };
   const liveSectionCounts = new Map<string, Record<Status, number>>();
   const liveMemberPct: MemberRow[] = [];
 
@@ -61,7 +61,7 @@ export default async function AdminDashboard({
       if (status === "MET") met += 1;
 
       if (!liveSectionCounts.has(item.section)) {
-        liveSectionCounts.set(item.section, { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0 });
+        liveSectionCounts.set(item.section, { MET: 0, NOT_MET: 0, IN_PROGRESS: 0, BLOCKED: 0, EXPIRED: 0 });
       }
       liveSectionCounts.get(item.section)![status] += 1;
     }
@@ -85,6 +85,7 @@ export default async function AdminDashboard({
       met: counts.MET,
       inProgress: counts.IN_PROGRESS,
       blocked: counts.BLOCKED,
+      expired: counts.EXPIRED,
       notMet: counts.NOT_MET,
     }))
     .sort((a, b) => a.name.localeCompare(b.name));

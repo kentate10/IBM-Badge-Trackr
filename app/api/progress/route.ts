@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import type { Status } from "@prisma/client";
+import { EXPIRABLE_ITEM_KEYS } from "@/lib/labels";
 
-const VALID_STATUSES: Status[] = ["MET", "NOT_MET", "IN_PROGRESS", "BLOCKED"];
+const VALID_STATUSES: Status[] = ["MET", "NOT_MET", "IN_PROGRESS", "BLOCKED", "EXPIRED"];
 
 type UpdateBody = {
   memberId: string;
@@ -27,6 +28,26 @@ export async function POST(req: NextRequest) {
   for (const u of body.updates) {
     if (typeof u.skillItemId !== "string" || !VALID_STATUSES.includes(u.status)) {
       return NextResponse.json({ error: "Actualización inválida" }, { status: 400 });
+    }
+  }
+
+  // "Expired" only makes sense for renewal-based certs (currently just ITIL)
+  // — guard it here too, not just in the dropdowns that offer it, so a
+  // future UI slip (or a direct API call) can't set it on a badge that
+  // doesn't actually expire. See EXPIRABLE_ITEM_KEYS in lib/labels.ts.
+  const expiredUpdates = body.updates.filter((u) => u.status === "EXPIRED");
+  if (expiredUpdates.length > 0) {
+    const expiredItems = await prisma.skillItem.findMany({
+      where: { id: { in: expiredUpdates.map((u) => u.skillItemId) } },
+      select: { id: true, key: true },
+    });
+    const keyById = new Map(expiredItems.map((it) => [it.id, it.key]));
+    const hasInvalid = expiredUpdates.some((u) => !EXPIRABLE_ITEM_KEYS.has(keyById.get(u.skillItemId) ?? ""));
+    if (hasInvalid) {
+      return NextResponse.json(
+        { error: "Expired solo aplica a certificaciones con vencimiento (ITIL)" },
+        { status: 400 }
+      );
     }
   }
 
